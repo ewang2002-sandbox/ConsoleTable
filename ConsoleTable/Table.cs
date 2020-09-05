@@ -82,11 +82,9 @@ namespace ConsoleTable
 			for (var c = 0; c < row.Length; ++c)
 			{
 				var str = row[c].ToString() ?? string.Empty;
-
-				if (str.Length <= MaxTextLengthPerColumn[c])
-					continue;
-
-				MaxTextLengthPerColumn[c] = AnsiRegex.Replace(str, string.Empty).Length;
+				var removedAnsiStr = AnsiRegex.Replace(str, string.Empty);
+				if (removedAnsiStr.Length > MaxTextLengthPerColumn[c])
+					MaxTextLengthPerColumn[c] = removedAnsiStr.Length;
 			}
 
 			Rows.Add(new Row {RowValues = row, SeparateHere = false});
@@ -154,7 +152,6 @@ namespace ConsoleTable
 					{
 						sb.Append(VerticalLine);
 						var objStr = Rows[r].RowValues[c].ToString() ?? string.Empty;
-
 						sb.Append(objStr);
 						sb.Append(Repeat(" ", MaxTextLengthPerColumn[c] - AnsiRegex.Replace(objStr, string.Empty).Length));
 					}
@@ -226,36 +223,5 @@ namespace ConsoleTable
 
 		private static string Repeat(string str, int count)
 			=> string.Join("", Enumerable.Repeat(str, count));
-	}
-
-	public struct Row
-	{
-		/// <summary>
-		/// The elements in this row.
-		/// </summary>
-		public object[] RowValues;
-
-		/// <summary>
-		/// Whether this row happens to be a separator. 
-		/// </summary>
-		public bool SeparateHere;
-	}
-
-	public enum Position
-	{
-		/// <summary>
-		/// The top part of the table.
-		/// </summary>
-		Top,
-
-		/// <summary>
-		/// Any area of the table that isn't the top or bottom.
-		/// </summary>
-		Between,
-
-		/// <summary>
-		/// The bottom part of the table.
-		/// </summary>
-		Bottom
 	}
 }
