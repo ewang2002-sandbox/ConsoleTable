@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace ConsoleTable
 {
@@ -19,6 +20,8 @@ namespace ConsoleTable
 		private const string HorizontalLine = "─";
 		private const string VerticalLine = "│";
 
+		private static readonly Regex AnsiRegex = new Regex(@"\x1B\[[^@-~]*[@-~]");
+
 		/// <summary>
 		/// The rows in this table.
 		/// </summary>
@@ -30,15 +33,30 @@ namespace ConsoleTable
 		public int[] MaxTextLengthPerColumn { get; }
 
 		/// <summary>
+		/// The new line string to use for this instance.
+		/// </summary>
+		public string NewLine { get; }
+
+		/// <summary>
 		/// Creates a new Table object. 
 		/// </summary>
 		/// <param name="columnPerRow">The number of columns per row.</param>
-		public Table(int columnPerRow)
+		public Table(int columnPerRow) : this(columnPerRow, "\n")
+		{
+		}
+
+		/// <summary>
+		/// Creates a new Table object.
+		/// </summary>
+		/// <param name="columnPerRow">The number of columns per row.</param>
+		/// <param name="newLine">The new line definition to use.</param>
+		public Table(int columnPerRow, string newLine)
 		{
 			if (columnPerRow <= 0)
 				throw new ArgumentException("You cannot have a row with 0 or less columns.", nameof(columnPerRow));
 			Rows = new List<Row>();
 			MaxTextLengthPerColumn = new int[columnPerRow];
+			NewLine = newLine;
 		}
 
 		/// <summary>
@@ -47,7 +65,7 @@ namespace ConsoleTable
 		/// <returns>This object.</returns>
 		public Table AddSeparator()
 		{
-			Rows.Add(new Row { RowValues = new object[0], SeparateHere = true });
+			Rows.Add(new Row {RowValues = new object[0], SeparateHere = true});
 			return this;
 		}
 
@@ -64,11 +82,14 @@ namespace ConsoleTable
 			for (var c = 0; c < row.Length; ++c)
 			{
 				var str = row[c].ToString() ?? string.Empty;
-				if (str.Length > MaxTextLengthPerColumn[c])
-					MaxTextLengthPerColumn[c] = str.Length;
+
+				if (str.Length <= MaxTextLengthPerColumn[c])
+					continue;
+
+				MaxTextLengthPerColumn[c] = AnsiRegex.Replace(str, string.Empty).Length;
 			}
 
-			Rows.Add(new Row { RowValues = row, SeparateHere = false });
+			Rows.Add(new Row {RowValues = row, SeparateHere = false});
 			return this;
 		}
 
@@ -84,7 +105,7 @@ namespace ConsoleTable
 
 			var strArr = row.Select(x => x.ToString() ?? string.Empty).ToArray();
 			var strArr2d = strArr
-				.Select(x => x.Split("\n"))
+				.Select(x => x.Split(NewLine))
 				.ToArray();
 			var maxLength = strArr2d
 				.Select(x => x.Length)
@@ -133,8 +154,9 @@ namespace ConsoleTable
 					{
 						sb.Append(VerticalLine);
 						var objStr = Rows[r].RowValues[c].ToString() ?? string.Empty;
+
 						sb.Append(objStr);
-						sb.Append(Repeat(" ", MaxTextLengthPerColumn[c] - objStr.Length));
+						sb.Append(Repeat(" ", MaxTextLengthPerColumn[c] - AnsiRegex.Replace(objStr, string.Empty).Length));
 					}
 
 					sb.Append(VerticalLine)
@@ -157,44 +179,44 @@ namespace ConsoleTable
 			switch (position)
 			{
 				case Position.Top:
+				{
+					sb.Append(TopLeftJoint);
+					for (var c = 0; c < MaxTextLengthPerColumn.Length; ++c)
 					{
-						sb.Append(TopLeftJoint);
-						for (var c = 0; c < MaxTextLengthPerColumn.Length; ++c)
-						{
-							sb.Append(Repeat(HorizontalLine, MaxTextLengthPerColumn[c]));
-							if (c + 1 != MaxTextLengthPerColumn.Length)
-								sb.Append(TopJoint);
-						}
-
-						sb.Append(TopRightJoint);
-						break;
+						sb.Append(Repeat(HorizontalLine, MaxTextLengthPerColumn[c]));
+						if (c + 1 != MaxTextLengthPerColumn.Length)
+							sb.Append(TopJoint);
 					}
+
+					sb.Append(TopRightJoint);
+					break;
+				}
 				case Position.Between:
+				{
+					sb.Append(LeftJoint);
+					for (var c = 0; c < MaxTextLengthPerColumn.Length; ++c)
 					{
-						sb.Append(LeftJoint);
-						for (var c = 0; c < MaxTextLengthPerColumn.Length; ++c)
-						{
-							sb.Append(Repeat(HorizontalLine, MaxTextLengthPerColumn[c]));
-							if (c + 1 != MaxTextLengthPerColumn.Length)
-								sb.Append(MiddleJoint);
-						}
-
-						sb.Append(RightJoint);
-						break;
+						sb.Append(Repeat(HorizontalLine, MaxTextLengthPerColumn[c]));
+						if (c + 1 != MaxTextLengthPerColumn.Length)
+							sb.Append(MiddleJoint);
 					}
+
+					sb.Append(RightJoint);
+					break;
+				}
 				case Position.Bottom:
+				{
+					sb.Append(BottomLeftJoint);
+					for (var c = 0; c < MaxTextLengthPerColumn.Length; ++c)
 					{
-						sb.Append(BottomLeftJoint);
-						for (var c = 0; c < MaxTextLengthPerColumn.Length; ++c)
-						{
-							sb.Append(Repeat(HorizontalLine, MaxTextLengthPerColumn[c]));
-							if (c + 1 != MaxTextLengthPerColumn.Length)
-								sb.Append(BottomJoint);
-						}
-
-						sb.Append(BottomRightJoint);
-						break;
+						sb.Append(Repeat(HorizontalLine, MaxTextLengthPerColumn[c]));
+						if (c + 1 != MaxTextLengthPerColumn.Length)
+							sb.Append(BottomJoint);
 					}
+
+					sb.Append(BottomRightJoint);
+					break;
+				}
 				default:
 					throw new ArgumentOutOfRangeException(nameof(position), position, null);
 			}
